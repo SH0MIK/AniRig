@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #0f1116;
+  color: #e6e8ee;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 20px;
+  background: #171a22;
+  border-bottom: 1px solid #262b38;
+}
+
+.topbar h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  margin: 0;
+  color: #ff8a65;
+}
+
+.modes { display: flex; gap: 6px; margin-left: auto; }
+.modes button, .io button, .filebtn {
+  background: #232838;
+  color: #c7cbdb;
+  border: 1px solid #313749;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modes button.active {
+  background: #ff8a65;
+  color: #14161d;
+  border-color: #ff8a65;
+}
+.io { display: flex; gap: 8px; }
+.filebtn { display: inline-flex; align-items: center; }
+.filebtn.primary {
+  background: #2f7d6e;
+  border-color: #2f7d6e;
+  color: #eafff8;
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.body { display: flex; flex: 1; min-height: 0; }
+
+.panel {
+  width: 280px;
+  background: #14161d;
+  border-right: 1px solid #262b38;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.bonelist { list-style: none; margin: 0 0 16px; padding: 0; }
+.bonelist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #9ba0b3;
+}
+.bonelist li.selected { background: #232838; color: #fff; }
+.bonelist li .controls button {
+  background: none;
+  border: none;
+  color: #6b7080;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+.bonelist li .controls button:hover { color: #ff8a65; }
+
+.inspector {
+  border-top: 1px solid #262b38;
+  padding-top: 14px;
+}
+.inspector h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.inspector label {
+  display: block;
+  font-size: 12px;
+  color: #9ba0b3;
+  margin-bottom: 12px;
+}
+.inspector input[type="text"],
+.inspector input,
+.inspector select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: #1c202b;
+  border: 1px solid #313749;
+  color: #e6e8ee;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.inspector .hint { font-size: 12px; color: #6b7080; line-height: 1.5; }
+
+.stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #0b0c10;
+  background-image: radial-gradient(circle, #1b1f2a 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+canvas {
+  background: #1b1f2a;
+  border: 1px solid #262b38;
+  border-radius: 8px;
+  max-width: 92%;
+  max-height: 88%;
+}
+.empty {
+  position: absolute;
+  color: #6b7080;
+  font-size: 14px;
+}
+
+.timeline {
+  background: #171a22;
+  border-top: 1px solid #262b38;
+  padding: 12px 20px;
+}
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.timeline-controls button {
+  background: #ff8a65;
+  color: #14161d;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.timeline-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #9ba0b3;
+  font-family: 'JetBrains Mono', monospace;
+}
+.timeline-controls input[type="range"] { width: 220px; }
+.timeline-controls input[type="number"] {
+  width: 60px;
+  background: #1c202b;
+  border: 1px solid #313749;
+  color: #e6e8ee;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.keyframes { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+.kf {
+  background: #232838;
+  border: 1px solid #313749;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #c7cbdb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kf button { background: none; border: none; color: #ff5a5f; cursor: pointer; }
