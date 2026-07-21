@@ -3,7 +3,8 @@ import { computeWorldTransforms, sampleAnimation } from './skeleton.js'
 
 const CANVAS_W = 900
 const CANVAS_H = 600
-const PIVOT_HANDLE_R = 7
+const PIVOT_HANDLE_R = 9
+const PIVOT_HIT_R = 20 // generous hit target for touch
 
 let uid = 0
 const nextId = () => `b${++uid}`
@@ -164,21 +165,23 @@ export default function App() {
   // ---------- bind-mode dragging ----------
   const getMousePos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect()
+    const point = e.touches ? e.touches[0] : e
     return {
-      x: ((e.clientX - rect.left) / rect.width) * CANVAS_W,
-      y: ((e.clientY - rect.top) / rect.height) * CANVAS_H,
+      x: ((point.clientX - rect.left) / rect.width) * CANVAS_W,
+      y: ((point.clientY - rect.top) / rect.height) * CANVAS_H,
     }
   }
 
-  const onMouseDown = (e) => {
+  const onPointerDown = (e) => {
     if (mode !== 'bind') return
+    e.preventDefault()
     const pos = getMousePos(e)
     const world = computeWorldTransforms(bones, {})
 
     // check pivot handle of selected bone first
     if (selectedId) {
       const t = world[selectedId]
-      if (t && Math.hypot(pos.x - t.x, pos.y - t.y) <= PIVOT_HANDLE_R + 4) {
+      if (t && Math.hypot(pos.x - t.x, pos.y - t.y) <= PIVOT_HIT_R) {
         dragRef.current = { type: 'pivot', boneId: selectedId, lastX: pos.x, lastY: pos.y }
         return
       }
@@ -198,8 +201,9 @@ export default function App() {
     }
   }
 
-  const onMouseMove = (e) => {
+  const onPointerMove = (e) => {
     if (!dragRef.current) return
+    e.preventDefault()
     const pos = getMousePos(e)
     const dx = pos.x - dragRef.current.lastX
     const dy = pos.y - dragRef.current.lastY
@@ -227,7 +231,7 @@ export default function App() {
     }
   }
 
-  const onMouseUp = () => {
+  const onPointerUp = () => {
     dragRef.current = null
   }
 
@@ -265,42 +269,85 @@ export default function App() {
   }
 
   const selectedBone = bones.find((b) => b.id === selectedId)
+  const modeSteps = [
+    { key: 'bind', label: 'Attach' },
+    { key: 'pose', label: 'Pose' },
+    { key: 'play', label: 'Play' },
+  ]
 
   return (
     <div className="app">
       <header className="topbar">
-        <h1>AniRig</h1>
-        <div className="modes">
-          {['bind', 'pose', 'play'].map((m) => (
-            <button key={m} className={mode === m ? 'active' : ''} onClick={() => { setMode(m); setIsPlaying(false) }}>
-              {m === 'bind' ? '1. Bind' : m === 'pose' ? '2. Pose & Keyframe' : '3. Play'}
-            </button>
+        <div className="brand">
+          <span className="brand-mark" />
+          <span>AniRig</span>
+        </div>
+
+        <div className="stepper">
+          {modeSteps.map((m, i) => (
+            <React.Fragment key={m.key}>
+              {i > 0 && <span className={`link ${modeSteps.findIndex((s) => s.key === mode) >= i ? 'done' : ''}`} />}
+              <button
+                className={`node ${mode === m.key ? 'active' : ''}`}
+                onClick={() => { setMode(m.key); setIsPlaying(false) }}
+              >
+                <span className="dot">{i + 1}</span>
+                {m.label}
+              </button>
+            </React.Fragment>
           ))}
         </div>
+
         <div className="io">
-          <button onClick={saveProject}>Save project</button>
           <label className="filebtn">
-            Load project
+            Load
             <input type="file" accept="application/json" onChange={loadProject} hidden />
           </label>
+          <button onClick={saveProject}>Save</button>
         </div>
       </header>
 
       <div className="body">
+        <main className="stage">
+          <div className="canvas-wrap">
+            <canvas
+              ref={canvasRef}
+              width={CANVAS_W}
+              height={CANVAS_H}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerLeave={onPointerUp}
+              style={{ touchAction: mode === 'bind' ? 'none' : 'auto' }}
+            />
+            {bones.length === 0 && (
+              <div className="empty">
+                <p>Upload a body part to start rigging.</p>
+                <label className="filebtn primary">
+                  + Upload image
+                  <input type="file" accept="image/*" onChange={handleUpload} hidden />
+                </label>
+              </div>
+            )}
+          </div>
+        </main>
+
         <aside className="panel">
-          <label className="filebtn primary">
-            + Upload body part
-            <input type="file" accept="image/*" onChange={handleUpload} hidden />
-          </label>
+          {bones.length > 0 && (
+            <label className="filebtn primary block">
+              + Add body part
+              <input type="file" accept="image/*" onChange={handleUpload} hidden />
+            </label>
+          )}
 
           <ul className="bonelist">
             {bones.map((b) => (
               <li key={b.id} className={b.id === selectedId ? 'selected' : ''} onClick={() => setSelectedId(b.id)}>
                 <span className="name">{b.name}</span>
                 <span className="controls">
-                  <button title="up" onClick={(e) => { e.stopPropagation(); reorder(b.id, 1) }}>↑</button>
-                  <button title="down" onClick={(e) => { e.stopPropagation(); reorder(b.id, -1) }}>↓</button>
-                  <button title="delete" onClick={(e) => { e.stopPropagation(); removeBone(b.id) }}>✕</button>
+                  <button title="Forward" onClick={(e) => { e.stopPropagation(); reorder(b.id, 1) }}>↑</button>
+                  <button title="Backward" onClick={(e) => { e.stopPropagation(); reorder(b.id, -1) }}>↓</button>
+                  <button title="Delete" onClick={(e) => { e.stopPropagation(); removeBone(b.id) }}>✕</button>
                 </span>
               </li>
             ))}
@@ -308,16 +355,12 @@ export default function App() {
 
           {selectedBone && mode === 'bind' && (
             <div className="inspector">
-              <h3>{selectedBone.name}</h3>
               <label>
                 Name
-                <input
-                  value={selectedBone.name}
-                  onChange={(e) => updateBone(selectedBone.id, { name: e.target.value })}
-                />
+                <input value={selectedBone.name} onChange={(e) => updateBone(selectedBone.id, { name: e.target.value })} />
               </label>
               <label>
-                Parent
+                Attached to
                 <select
                   value={selectedBone.parentId || ''}
                   onChange={(e) => {
@@ -330,88 +373,53 @@ export default function App() {
                     })
                   }}
                 >
-                  <option value="">(root — no parent)</option>
-                  {bones
-                    .filter((b) => b.id !== selectedBone.id)
-                    .map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
+                  <option value="">Nothing (root part)</option>
+                  {bones.filter((b) => b.id !== selectedBone.id).map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
                 </select>
               </label>
-              <p className="hint">
-                Drag the part on canvas to attach it. Drag the red dot to set its joint (pivot) point.
-              </p>
+              <p className="hint">Drag the part to position it · drag the dot to set its joint</p>
             </div>
           )}
 
           {selectedBone && mode === 'pose' && (
             <div className="inspector">
-              <h3>{selectedBone.name}</h3>
               <label>
-                Rotation ({Math.round(rotations[selectedBone.id] || 0)}°)
+                {selectedBone.name} rotation
+                <span className="value">{Math.round(rotations[selectedBone.id] || 0)}°</span>
                 <input
                   type="range"
                   min={-180}
                   max={180}
                   value={rotations[selectedBone.id] || 0}
-                  onChange={(e) =>
-                    setRotations((prev) => ({ ...prev, [selectedBone.id]: Number(e.target.value) }))
-                  }
+                  onChange={(e) => setRotations((prev) => ({ ...prev, [selectedBone.id]: Number(e.target.value) }))}
                 />
               </label>
             </div>
           )}
         </aside>
-
-        <main className="stage">
-          <canvas
-            ref={canvasRef}
-            width={CANVAS_W}
-            height={CANVAS_H}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            style={{ cursor: mode === 'bind' ? 'grab' : 'default' }}
-          />
-          {bones.length === 0 && <p className="empty">Upload your first body part (e.g. torso) to begin.</p>}
-        </main>
       </div>
 
       {mode === 'pose' && (
         <footer className="timeline">
-          <div className="timeline-controls">
-            <button onClick={addKeyframe}>+ Add keyframe at {playTime.toFixed(2)}s</button>
-            <label>
-              Time
-              <input
-                type="range"
-                min={0}
-                max={duration}
-                step={0.01}
-                value={playTime}
-                onChange={(e) => {
-                  const t = Number(e.target.value)
-                  setPlayTime(t)
-                  setRotations(sampleAnimation(keyframes, t))
-                }}
-              />
-              {playTime.toFixed(2)}s
-            </label>
-            <label>
-              Duration
-              <input
-                type="number"
-                min={0.5}
-                step={0.5}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-              />
-              s
-            </label>
-          </div>
+          <button className="cta" onClick={addKeyframe}>+ Keyframe @ {playTime.toFixed(2)}s</button>
+          <input
+            type="range"
+            className="scrub"
+            min={0}
+            max={duration}
+            step={0.01}
+            value={playTime}
+            onChange={(e) => {
+              const t = Number(e.target.value)
+              setPlayTime(t)
+              setRotations(sampleAnimation(keyframes, t))
+            }}
+          />
+          <label className="dur">
+            <input type="number" min={0.5} step={0.5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />s
+          </label>
           <div className="keyframes">
             {keyframes.map((k) => (
               <span key={k.id} className="kf">
@@ -425,21 +433,17 @@ export default function App() {
 
       {mode === 'play' && (
         <footer className="timeline">
-          <div className="timeline-controls">
-            <button onClick={() => setIsPlaying((p) => !p)}>{isPlaying ? 'Pause' : 'Play'}</button>
-            <label>
-              Scrub
-              <input
-                type="range"
-                min={0}
-                max={duration}
-                step={0.01}
-                value={playTime}
-                onChange={(e) => setPlayTime(Number(e.target.value))}
-              />
-              {playTime.toFixed(2)}s / {duration}s
-            </label>
-          </div>
+          <button className="cta" onClick={() => setIsPlaying((p) => !p)}>{isPlaying ? 'Pause' : 'Play'}</button>
+          <input
+            type="range"
+            className="scrub"
+            min={0}
+            max={duration}
+            step={0.01}
+            value={playTime}
+            onChange={(e) => setPlayTime(Number(e.target.value))}
+          />
+          <span className="readout">{playTime.toFixed(2)}s / {duration}s</span>
         </footer>
       )}
     </div>
